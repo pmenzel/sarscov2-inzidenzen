@@ -1,0 +1,18 @@
+name: r-2021-sarscov2-inzidenzen
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+  - anaconda
+dependencies:
+  - conda-forge::r-tidyverse
+  - conda-forge::r-base
+  - conda-forge::r-tidytext
+  - conda-forge::r-plotly
+  - conda-forge::r-knitr
+  - conda-forge::r-ggforce
+  - conda-forge::r-ggrepel
+  - conda-forge::r-reshape2
+  - conda-forge::r-patchwork
+  - conda-forge::r-xlsx
+  - conda-forge::r-curl
