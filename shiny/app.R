@@ -1,0 +1,142 @@
+library(tibble)
+library(readr)
+library(forcats)
+library(tidyr)
+library(stringr)
+library(magrittr)
+library(dplyr)
+library(purrr)
+library(ggplot2)
+library(ggrepel)
+library(plotly)
+library(lubridate)
+library(curl)
+library(shiny)
+library(shinydashboard)
+library(shinycssloaders)
+library(readxl)
+
+# UI ----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+header <- dashboardHeader(title = "SARS-CoV-2 Inzidenzen")
+
+sidebar <- dashboardSidebar(
+  sidebarMenu(
+    menuItem("Inzidenzen", startExpanded = TRUE,
+      menuSubItem("Bundesländer", tabName = "tab-BL"),
+      menuSubItem("Landkreise", tabName = "tab-LK")
+    )
+  )
+)
+
+body <- dashboardBody(
+  tabItems(
+    tabItem(tabName = "tab-BL", fluidRow(box(width = "12", plotOutput("plot.BL", width = "1000px", height = "800px") %>% withSpinner(color = "#0dc5c1")))),
+    tabItem(tabName = "tab-LK", fluidRow(box(width = "12", plotOutput("plot.LK", width = "1000px", height = "800px") %>% withSpinner(color = "#0dc5c1"))))
+  )
+)
+
+ui <- dashboardPage(header, sidebar, body)
+
+# Server ----------------------------------------------------------------------------------------------------------------------------------------------------------
+server <- function(input, output, session) {
+  
+  DateOfInterest <- today() - days(1)
+
+  # Bundesländer ----------------------------------------------------------------------------------------------------------------------------------------------
+
+  df.plot.BL <- reactive({
+    filename <- tempfile()
+    message(filename)
+    urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Inzidenz_aktualisiert.xlsx?__blob=publicationFile"
+    curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
+
+    df.raw.BL <- read_xlsx(filename, sheet = 5, skip = 1)
+
+    df.long <- df.raw.BL %>%
+      pivot_longer(-MeldeLandkreisBundesland, names_to = "Datum", values_to = "Inzidenz")
+
+    df.long %>%
+      mutate(Datum = readr::parse_date(Datum, "%d.%m.%Y")) %>%
+      transmute(BL = MeldeLandkreisBundesland, Datum, Inzidenz) %>%
+      group_by(BL) %>%
+        arrange(Datum) %>%
+        mutate(Inzidenz7DaysAgo = lag(Inzidenz, 7)) %>%
+        mutate(Change = Inzidenz - Inzidenz7DaysAgo) %>%
+      ungroup() %>%
+      filter(Datum >= DateOfInterest - days(7), Datum <= DateOfInterest) %>%
+      mutate(DaysSince = as.integer(DateOfInterest - Datum)) %>%
+      mutate(Highlight = ifelse(BL == "Gesamt", "y", "n"))
+  })
+
+
+  output$plot.BL <- renderPlot({
+    df.plot <- df.plot.BL()
+    
+    df.plot %>%
+      ggplot() +
+      geom_hline(yintercept = 0, color = "grey20") +
+      geom_vline(xintercept = 0, color = "grey20") +
+      geom_path(aes(x = Inzidenz, y = Change, group = BL, alpha = 7 - DaysSince), color = "grey50", show.legend = FALSE) +
+      geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change, fill = Highlight), shape = 21, size = 3) +
+      geom_text_repel(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change, label = BL), color = "grey40") +
+      scale_x_continuous(name = "7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
+      scale_fill_manual(values = c("y" = "red", "n" = "grey50"), guide = "none") +
+      scale_y_continuous(name = "Differenz zur 7-Tage-Inzidenz vor einer Woche") +
+      theme_bw(base_size = 15) +
+      theme(axis.line = element_blank(), axis.ticks = element_blank()) +
+      labs(
+        title = "Entwicklung 7-Tage-Inzidenzen der Bundesländer",
+        subtitle = paste0("Datum: ", DateOfInterest),
+        caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html"
+      )
+  })
+
+  # Landkreise ----------------------------------------------------------------------------------------------------------------------------------------------
+
+  df.plot.LK <- reactive({
+    filename <- tempfile()
+    urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Inzidenz_aktualisiert.xlsx?__blob=publicationFile"
+    curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
+
+    df.raw.LK <- read_xlsx(filename, sheet = 7, skip = 1)
+
+    df.long <- df.raw.LK %>%
+      filter(!is.na(MeldeLandkreis)) %>%
+      pivot_longer(cols = !c("IdMeldeLandkreis", "MeldeLandkreis"), names_to = "Datum", values_to = "Inzidenz")
+
+    df.long %>%
+      mutate(Datum = readr::parse_date(Datum, "%d.%m.%Y")) %>%
+      transmute(LK = MeldeLandkreis, Datum, Inzidenz) %>%
+      group_by(LK) %>%
+        arrange(Datum) %>%
+        mutate(Inzidenz7DaysAgo = lag(Inzidenz, 7)) %>%
+        mutate(Change = Inzidenz - Inzidenz7DaysAgo) %>%
+      ungroup() %>%
+      filter(Datum >= DateOfInterest - days(7), Datum <= DateOfInterest) %>%
+      mutate(DaysSince = as.integer(DateOfInterest - Datum))
+  })
+
+  output$plot.LK <- renderPlot({
+    df.plot <- df.plot.LK()
+    
+    df.plot %>%
+      ggplot() +
+      geom_hline(yintercept = 0, color = "grey20") +
+      geom_vline(xintercept = 0, color = "grey20") +
+      geom_path(aes(x = Inzidenz, y = Change, group = LK, alpha = 7 - DaysSince), color = "grey50", show.legend = FALSE) +
+      geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change), color = "deepskyblue4", alpha = 0.8) +
+      geom_text_repel(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change, label = LK)) +
+      scale_x_continuous(name = "7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
+      scale_y_continuous(name = "Differenz zur 7-Tage-Inzidenz vor einer Woche") +
+      theme_bw(base_size = 15) +
+      theme(axis.line = element_blank(), axis.ticks = element_blank()) +
+      labs(
+        title = "Entwicklung 7-Tage-Inzidenzen der Landkreise",
+        subtitle = paste0("Datum: ", DateOfInterest),
+        caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html"
+      )
+  })
+}
+
+shinyApp(ui = ui, server = server)

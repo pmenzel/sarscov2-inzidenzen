@@ -39,25 +39,27 @@ df.plot <- df.long %>%
     mutate(Inzidenz7DaysAgo = lag(Inzidenz, 7)) %>%
     mutate(Change = Inzidenz - Inzidenz7DaysAgo) %>%
   ungroup() %>%
-  filter(Datum >= DateOfInterest - days(7)) %>%
+  filter(Datum >= DateOfInterest - days(7), Datum <= DateOfInterest) %>%
   mutate(DaysSince = as.integer(DateOfInterest - Datum)) %>%
-  mutate(Highlight = ifelse(BL=="Gesamt", "y", "n"))
+  mutate(Highlight = ifelse(BL == "Gesamt", "y", "n"))
 
 p.BL <- df.plot %>%
   ggplot() +
   geom_hline(yintercept = 0, color = "grey20") +
   geom_vline(xintercept = 0, color = "grey20") +
   geom_path(aes(x = Inzidenz, y = Change, group = BL, alpha = 7 - DaysSince), color = "grey50", show.legend = FALSE) +
-  geom_point(data = df.plot %>% filter(Datum == today()), aes(x = Inzidenz, y = Change, fill = Highlight), shape = 21, size = 3) +
-  geom_text_repel(data = df.plot %>% filter(Datum == today()), aes(x = Inzidenz, y = Change, label = BL), color = "grey40") +
-  scale_x_continuous(name="7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
+  geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change, fill = Highlight), shape = 21, size = 3) +
+  geom_text_repel(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change, label = BL), color = "grey40") +
+  scale_x_continuous(name = "7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
   scale_fill_manual(values = c("y" = "red", "n" = "grey50"), guide = "none") +
-  scale_y_continuous(name="Differenz zur 7-Tage-Inzidenz vor einer Woche") +
+  scale_y_continuous(name = "Differenz zur 7-Tage-Inzidenz vor einer Woche") +
   theme_bw() +
   theme(axis.line = element_blank(), axis.ticks = element_blank()) +
-  labs(title = "Entwicklung 7-Tage-Inzidenzen der Bundesländer",
-       subtitle = paste0("Datum: ", DateOfInterest),
-       caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html")
+  labs(
+    title = "Entwicklung 7-Tage-Inzidenzen der Bundesländer",
+    subtitle = paste0("Datum: ", DateOfInterest),
+    caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html"
+  )
 
 ggsave(p.BL, filename = paste0(DateOfInterest, "_Entwicklung_Inzidenz_BL.png"), width = 10)
 
@@ -78,7 +80,7 @@ df.plot <- df.long %>%
     mutate(Inzidenz7DaysAgo = lag(Inzidenz, 7)) %>%
     mutate(Change = Inzidenz - Inzidenz7DaysAgo) %>%
   ungroup() %>%
-  filter(Datum >= DateOfInterest - days(7)) %>%
+  filter(Datum >= DateOfInterest - days(7), Datum <= DateOfInterest) %>%
   mutate(DaysSince = as.integer(DateOfInterest - Datum))
 
 p.LK <- df.plot %>%
@@ -86,15 +88,16 @@ p.LK <- df.plot %>%
   geom_hline(yintercept = 0, color = "grey20") +
   geom_vline(xintercept = 0, color = "grey20") +
   geom_path(aes(x = Inzidenz, y = Change, group = LK, alpha = 7 - DaysSince), color = "grey50", show.legend = FALSE) +
-  geom_point(data = df.plot %>% filter(Datum == today()), aes(x = Inzidenz, y = Change), color = "deepskyblue4", alpha = 0.8) +
-  geom_text_repel(data = df.plot %>% filter(Datum == today()), aes(x = Inzidenz, y = Change, label = LK), size = 2.3) +
-  scale_x_continuous(name="7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
-  scale_y_continuous(name="Differenz zur 7-Tage-Inzidenz vor einer Woche") +
+  geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change), color = "deepskyblue4", alpha = 0.8) +
+  geom_text_repel(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change, label = LK), size = 2.3) +
+  scale_x_continuous(name = "7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
+  scale_y_continuous(name = "Differenz zur 7-Tage-Inzidenz vor einer Woche") +
   theme_bw() +
   theme(axis.line = element_blank(), axis.ticks = element_blank()) +
-  labs(title = "Entwicklung 7-Tage-Inzidenzen der Landkreise",
-       subtitle = paste0("Datum: ", DateOfInterest),
-       caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html")
+  labs(
+    title = "Entwicklung 7-Tage-Inzidenzen der Landkreise",
+    subtitle = paste0("Datum: ", DateOfInterest),
+    caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html"
+  )
 
 ggsave(p.LK, filename = paste0(DateOfInterest, "_Entwicklung_Inzidenz_LK.png"), width = 10)
-
