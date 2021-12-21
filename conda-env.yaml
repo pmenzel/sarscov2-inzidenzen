@@ -7,12 +7,11 @@ channels:
 dependencies:
   - conda-forge::r-tidyverse
   - conda-forge::r-base
-  - conda-forge::r-tidytext
   - conda-forge::r-plotly
   - conda-forge::r-knitr
-  - conda-forge::r-ggforce
   - conda-forge::r-ggrepel
-  - conda-forge::r-reshape2
-  - conda-forge::r-patchwork
-  - conda-forge::r-xlsx
   - conda-forge::r-curl
+  - conda-forge::r-readxl
+  - conda-forge::r-shiny
+  - conda-forge::r-shinycssloaders
+  - conda-forge::r-shinydashboard

@@ -11,16 +11,12 @@ library(magrittr)
 library(dplyr)
 library(purrr)
 library(ggplot2)
-library(tidytext)
-library(ggforce)
 library(ggrepel)
 library(scales)
-library(reshape2)
-library(patchwork)
 library(plotly)
 library(lubridate)
-library(xlsx)
 library(curl)
+library(readxl)
 
 filename <- paste0(today(), "_Fallzahlen_Inzidenz.xlsx")
 urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Inzidenz_aktualisiert.xlsx?__blob=publicationFile"
@@ -30,14 +26,13 @@ DateOfInterest <- today() - days(1)
 
 # Bundesländer ----------------------------------------------------------------------------------------------------------------------------------------------
 
-df.raw.BL <- xlsx::read.xlsx(filename, sheetIndex = 5, stringsAsFactors = F, header = T, startRow = 2)
+df.raw.BL <- read_xlsx(filename, sheet = 5, skip = 1)
 
 df.long <- df.raw.BL %>%
-  select(-`NA.`) %>%
   pivot_longer(-MeldeLandkreisBundesland, names_to = "Datum", values_to = "Inzidenz")
 
 df.plot <- df.long %>%
-  mutate(Datum = readr::parse_date(Datum, "X%d.%m.%Y")) %>%
+  mutate(Datum = readr::parse_date(Datum, "%d.%m.%Y")) %>%
   transmute(BL = MeldeLandkreisBundesland, Datum, Inzidenz) %>%
   group_by(BL) %>%
     arrange(Datum) %>%
@@ -69,17 +64,14 @@ ggsave(p.BL, filename = paste0(DateOfInterest, "_Entwicklung_Inzidenz_BL.png"), 
 
 # Landkreise ----------------------------------------------------------------------------------------------------------------------------------------------
 
-df.raw.LK <- xlsx::read.xlsx(filename, sheetIndex = 7, stringsAsFactors = F, header = T, startRow = 2)
-
-DateOfInterest <- today() - days(1)
+df.raw.LK <- read_xlsx(filename, sheet = 7, skip = 1)
 
 df.long <- df.raw.LK %>%
-  select(-`NA.`) %>%
   filter(!is.na(MeldeLandkreis)) %>%
   pivot_longer(cols = !c("IdMeldeLandkreis", "MeldeLandkreis"), names_to = "Datum", values_to = "Inzidenz")
 
 df.plot <- df.long %>%
-  mutate(Datum = readr::parse_date(Datum, "X%d.%m.%Y")) %>%
+  mutate(Datum = readr::parse_date(Datum, "%d.%m.%Y")) %>%
   transmute(LK = MeldeLandkreis, Datum, Inzidenz) %>%
   group_by(LK) %>%
     arrange(Datum) %>%
@@ -88,7 +80,6 @@ df.plot <- df.long %>%
   ungroup() %>%
   filter(Datum >= DateOfInterest - days(7)) %>%
   mutate(DaysSince = as.integer(DateOfInterest - Datum))
-
 
 p.LK <- df.plot %>%
   ggplot() +
