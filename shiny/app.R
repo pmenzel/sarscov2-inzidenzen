@@ -46,8 +46,11 @@ server <- function(input, output, session) {
   # Bundesländer ----------------------------------------------------------------------------------------------------------------------------------------------
 
   df.plot.BL <- reactive({
+    # reload every 8 hours
+    invalidateLater(8* 60 * 60* 1000)
+
     filename <- tempfile()
-    message(filename)
+    message(paste(now(), "Downloading to temp file", filename))
     urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Inzidenz_aktualisiert.xlsx?__blob=publicationFile"
     curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
 
@@ -95,7 +98,11 @@ server <- function(input, output, session) {
   # Landkreise ----------------------------------------------------------------------------------------------------------------------------------------------
 
   df.plot.LK <- reactive({
+    # reload every 8 hours
+    invalidateLater(8* 60 * 60* 1000)
+
     filename <- tempfile()
+    message(paste(now(), "Downloading to temp file", filename))
     urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Inzidenz_aktualisiert.xlsx?__blob=publicationFile"
     curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
 
