@@ -38,6 +38,9 @@ body <- dashboardBody(
 
 ui <- dashboardPage(header, sidebar, body)
 
+urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Inzidenz_aktualisiert.xlsx?__blob=publicationFile"
+filename <- "Fallzahlen_Inzidenz_aktualisiert.xlsx"
+
 # Server ----------------------------------------------------------------------------------------------------------------------------------------------------------
 server <- function(input, output, session) {
   
@@ -49,10 +52,10 @@ server <- function(input, output, session) {
     # reload every 8 hours
     invalidateLater(8* 60 * 60* 1000)
 
-    filename <- tempfile()
-    message(paste(now(), "Downloading to temp file", filename))
-    urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Inzidenz_aktualisiert.xlsx?__blob=publicationFile"
-    curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
+    if(!file.exists(filename) || now() - file.info(filename)$mtime > hours(8)) {
+      message(paste(now(), "Downloading to file", filename))
+      curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
+    }
 
     df.raw.BL <- read_xlsx(filename, sheet = 5, skip = 1)
 
@@ -101,10 +104,10 @@ server <- function(input, output, session) {
     # reload every 8 hours
     invalidateLater(8* 60 * 60* 1000)
 
-    filename <- tempfile()
-    message(paste(now(), "Downloading to temp file", filename))
-    urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Inzidenz_aktualisiert.xlsx?__blob=publicationFile"
-    curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
+    if(!file.exists(filename) || now() - file.info(filename)$mtime > hours(8)) {
+      message(paste(now(), "Downloading to file", filename))
+      curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
+    }
 
     df.raw.LK <- read_xlsx(filename, sheet = 7, skip = 1)
 
