@@ -18,6 +18,11 @@ library(lubridate)
 library(curl)
 library(readxl)
 
+df.ID_BL <- data.frame(BL_ID = c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16"),
+                       Bundesland = c("Schleswig-Holstein", "Hamburg", "Niedersachsen", "Bremen", "Nordrhein-Westfalen", "Hessen", "Rheinland-Pfalz", "Baden-Württemberg", "Bayern", "Saarland", "Berlin", "Brandenburg", "Mecklenburg-Vorpommern", "Sachsen", "Sachsen-Anhalt", "Thüringen")
+)
+
+
 filename <- paste0(today(), "_Fallzahlen_Inzidenz.xlsx")
 urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Inzidenz_aktualisiert.xlsx?__blob=publicationFile"
 curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
@@ -95,7 +100,9 @@ df.long <- df.raw.LK %>%
 
 df.plot <- df.long %>%
   mutate(Datum = readr::parse_date(Datum, "%d.%m.%Y")) %>%
-  transmute(LK = MeldeLandkreis, Datum, Inzidenz) %>%
+  mutate(BL_ID = substr(IdMeldeLandkreis,1,2)) %>%
+  left_join(df.ID_BL, by="BL_ID") %>%
+  transmute(LK = MeldeLandkreis, Bundesland, Datum, Inzidenz) %>%
   group_by(LK) %>%
     arrange(Datum) %>%
     mutate(Inzidenz7DaysAgo = lag(Inzidenz, 7)) %>%
@@ -109,12 +116,13 @@ p.LK <- df.plot %>%
   geom_hline(yintercept = 0, color = "grey20") +
   geom_vline(xintercept = 0, color = "grey20") +
   geom_path(aes(x = Inzidenz, y = Change, group = LK, alpha = 7 - DaysSince), color = "grey50", show.legend = FALSE) +
-  geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change), color = "deepskyblue4", alpha = 0.8) +
-  geom_text_repel(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change, label = LK), size = 2.3) +
+  geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change, fill = Bundesland), shape = 21, color = "grey50", alpha = 0.8) +
+  geom_text_repel(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = Change, label = LK), size = 2.3, min.segment.length = Inf) +
   scale_x_continuous(name = "7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
   scale_y_continuous(name = "Differenz zur 7-Tage-Inzidenz vor einer Woche") +
+  guides(fill = guide_legend(ncol = 6, title = element_blank())) +
   theme_bw() +
-  theme(axis.line = element_blank(), axis.ticks = element_blank()) +
+  theme(axis.line = element_blank(), axis.ticks = element_blank(), legend.position = "bottom") +
   labs(
     title = "Entwicklung 7-Tage-Inzidenzen der Landkreise",
     subtitle = paste0("Datum: ", DateOfInterest),
@@ -128,12 +136,13 @@ p.LK.perc <- df.plot %>%
   geom_hline(yintercept = 0, color = "grey20") +
   geom_vline(xintercept = 0, color = "grey20") +
   geom_path(aes(x = Inzidenz, y = ChangePerc, group = LK, alpha = 7 - DaysSince), color = "grey50", show.legend = FALSE) +
-  geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = ChangePerc), color = "deepskyblue4", alpha = 0.8) +
+  geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = ChangePerc, fill = Bundesland), shape = 21, color = "grey50", alpha = 0.8) +
   geom_text_repel(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = ChangePerc, label = LK), size = 2.3) +
   scale_x_continuous(name = "7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
   scale_y_continuous(name = "Unterschied zur 7-Tage-Inzidenz vor einer Woche in Prozent") +
+  guides(fill = guide_legend(ncol = 6, title = element_blank())) +
   theme_bw() +
-  theme(axis.line = element_blank(), axis.ticks = element_blank()) +
+  theme(axis.line = element_blank(), axis.ticks = element_blank(), legend.position = "bottom") +
   labs(
     title = "Prozentuale Entwicklung 7-Tage-Inzidenzen der Landkreise",
     subtitle = paste0("Datum: ", DateOfInterest),
@@ -141,3 +150,4 @@ p.LK.perc <- df.plot %>%
   )
 
 ggsave(p.LK.perc, filename = paste0(DateOfInterest, "_Entwicklung_Inzidenz_Prozent_LK.png"), width = 10)
+
