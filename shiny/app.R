@@ -31,8 +31,10 @@ sidebar <- dashboardSidebar(
 
 body <- dashboardBody(
   tabItems(
-    tabItem(tabName = "tab-BL", fluidRow(box(width = "12", plotOutput("plot.BL", width = "1000px", height = "800px") %>% withSpinner(color = "#0dc5c1")))),
-    tabItem(tabName = "tab-LK", fluidRow(box(width = "12", plotOutput("plot.LK", width = "1000px", height = "800px") %>% withSpinner(color = "#0dc5c1"))))
+    tabItem(tabName = "tab-BL", fluidRow(box(width = "12", plotOutput("plotBL", width = "1000px", height = "800px") %>% withSpinner(color = "#0dc5c1")),
+                                         box(width = "12", plotOutput("plotBLperc", width = "1000px", height = "800px") %>% withSpinner(color = "#0dc5c1")))),
+    tabItem(tabName = "tab-LK", fluidRow(box(width = "12", plotOutput("plotLK", width = "1000px", height = "800px") %>% withSpinner(color = "#0dc5c1")),
+                                         box(width = "12", plotOutput("plotLKperc", width = "1000px", height = "800px") %>% withSpinner(color = "#0dc5c1"))))
   )
 )
 
@@ -68,7 +70,8 @@ server <- function(input, output, session) {
       group_by(BL) %>%
         arrange(Datum) %>%
         mutate(Inzidenz7DaysAgo = lag(Inzidenz, 7)) %>%
-        mutate(Change = Inzidenz - Inzidenz7DaysAgo) %>%
+        mutate(Change = Inzidenz - Inzidenz7DaysAgo,
+               ChangePerc = Change / Inzidenz7DaysAgo * 100) %>%
       ungroup() %>%
       filter(Datum >= DateOfInterest - days(7), Datum <= DateOfInterest) %>%
       mutate(DaysSince = as.integer(DateOfInterest - Datum)) %>%
@@ -76,7 +79,7 @@ server <- function(input, output, session) {
   })
 
 
-  output$plot.BL <- renderPlot({
+  output$plotBL <- renderPlot({
     df.plot <- df.plot.BL()
     
     df.plot %>%
@@ -93,6 +96,28 @@ server <- function(input, output, session) {
       theme(axis.line = element_blank(), axis.ticks = element_blank()) +
       labs(
         title = "Entwicklung 7-Tage-Inzidenzen der Bundesländer",
+        subtitle = paste0("Datum: ", DateOfInterest),
+        caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html"
+      )
+  })
+
+  output$plotBLperc <- renderPlot({
+    df.plot <- df.plot.BL()
+
+    df.plot %>%
+      ggplot() +
+      geom_hline(yintercept = 0, color = "grey20") +
+      geom_vline(xintercept = 0, color = "grey20") +
+      geom_path(aes(x = Inzidenz, y = ChangePerc, group = BL, alpha = 7 - DaysSince), color = "grey50", show.legend = FALSE) +
+      geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = ChangePerc, fill = Highlight), shape = 21, size = 3) +
+      geom_text_repel(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = ChangePerc, label = BL), color = "grey40") +
+      scale_x_continuous(name = "7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
+      scale_fill_manual(values = c("y" = "red", "n" = "grey50"), guide = "none") +
+      scale_y_continuous(name = "Unterschied zur 7-Tage-Inzidenz vor einer Woche in Prozent") +
+      theme_bw(base_size = 15) +
+      theme(axis.line = element_blank(), axis.ticks = element_blank()) +
+      labs(
+        title = "Prozentuale Entwicklung 7-Tage-Inzidenzen der Bundesländer",
         subtitle = paste0("Datum: ", DateOfInterest),
         caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html"
       )
@@ -121,15 +146,16 @@ server <- function(input, output, session) {
       group_by(LK) %>%
         arrange(Datum) %>%
         mutate(Inzidenz7DaysAgo = lag(Inzidenz, 7)) %>%
-        mutate(Change = Inzidenz - Inzidenz7DaysAgo) %>%
+        mutate(Change = Inzidenz - Inzidenz7DaysAgo,
+               ChangePerc = Change / Inzidenz7DaysAgo * 100) %>%
       ungroup() %>%
       filter(Datum >= DateOfInterest - days(7), Datum <= DateOfInterest) %>%
       mutate(DaysSince = as.integer(DateOfInterest - Datum))
   })
 
-  output$plot.LK <- renderPlot({
+  output$plotLK <- renderPlot({
     df.plot <- df.plot.LK()
-    
+
     df.plot %>%
       ggplot() +
       geom_hline(yintercept = 0, color = "grey20") +
@@ -147,6 +173,28 @@ server <- function(input, output, session) {
         caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html"
       )
   })
+
+  output$plotLKperc <- renderPlot({
+    df.plot <- df.plot.LK()
+
+    df.plot %>%
+      ggplot() +
+      geom_hline(yintercept = 0, color = "grey20") +
+      geom_vline(xintercept = 0, color = "grey20") +
+      geom_path(aes(x = Inzidenz, y = ChangePerc, group = LK, alpha = 7 - DaysSince), color = "grey50", show.legend = FALSE) +
+      geom_point(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = ChangePerc), color = "deepskyblue4", alpha = 0.8) +
+      geom_text_repel(data = df.plot %>% filter(Datum == DateOfInterest), aes(x = Inzidenz, y = ChangePerc, label = LK)) +
+      scale_x_continuous(name = "7-Tage-Inzidenz (Fälle in der letzten Woche je 100k Einwohner)") +
+      scale_y_continuous(name = "Unterschied zur 7-Tage-Inzidenz vor einer Woche in Prozent") +
+      theme_bw(base_size = 15) +
+      theme(axis.line = element_blank(), axis.ticks = element_blank()) +
+      labs(
+        title = "Prozentuale Entwicklung 7-Tage-Inzidenzen der Landkreise",
+        subtitle = paste0("Datum: ", DateOfInterest),
+        caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Inzidenz-Tabellen.html"
+      )
+  })
+
 }
 
 shinyApp(ui = ui, server = server)
