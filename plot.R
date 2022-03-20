@@ -34,10 +34,13 @@ DateOfInterest <- today() - days(1)
 df.raw.BL <- read_xlsx(filename, sheet = 5, skip = 1)
 
 df.long <- df.raw.BL %>%
-  pivot_longer(-MeldeLandkreisBundesland, names_to = "Datum", values_to = "Inzidenz")
+  pivot_longer(-MeldeLandkreisBundesland, names_to = "Datum", values_to = "Inzidenz") %>%
+  mutate(Datum = readr::parse_date(Datum, "%d.%m.%Y"))
+
+max_available_date <- max(df.long$Datum)
+DateOfInterest <- min(DateOfInterest, max_available_date)
 
 df.plot <- df.long %>%
-  mutate(Datum = readr::parse_date(Datum, "%d.%m.%Y")) %>%
   transmute(BL = MeldeLandkreisBundesland, Datum, Inzidenz) %>%
   group_by(BL) %>%
     arrange(Datum) %>%
@@ -96,10 +99,13 @@ df.raw.LK <- read_xlsx(filename, sheet = 7, skip = 1)
 
 df.long <- df.raw.LK %>%
   filter(!is.na(MeldeLandkreis)) %>%
-  pivot_longer(cols = !c("IdMeldeLandkreis", "MeldeLandkreis"), names_to = "Datum", values_to = "Inzidenz")
+  pivot_longer(cols = !c("IdMeldeLandkreis", "MeldeLandkreis"), names_to = "Datum", values_to = "Inzidenz") %>%
+  mutate(Datum = readr::parse_date(Datum, "%d.%m.%Y"))
+
+max_available_date <- max(df.long$Datum)
+DateOfInterest <- min(DateOfInterest, max_available_date)
 
 df.plot <- df.long %>%
-  mutate(Datum = readr::parse_date(Datum, "%d.%m.%Y")) %>%
   mutate(BL_ID = substr(IdMeldeLandkreis,1,2)) %>%
   left_join(df.ID_BL, by="BL_ID") %>%
   transmute(LK = MeldeLandkreis, Bundesland, Datum, Inzidenz) %>%
@@ -150,4 +156,35 @@ p.LK.perc <- df.plot %>%
   )
 
 ggsave(p.LK.perc, filename = paste0(DateOfInterest, "_Entwicklung_Inzidenz_Prozent_LK.png"), width = 10)
+
+# Kumulierte Todesfälle -----------------------------------------------------------------------------------------------------------------------------------------------
+
+filename <- paste0(today(), "_Fallzahlen_Todesfälle.xlsx")
+urlRKI <- "https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Gesamtuebersicht.xlsx?__blob=publicationFile"
+curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
+
+df.raw <- read_xlsx(filename, sheet = 1, skip = 3, col_names = c("date", "n_cases", "diff_cases", "n_deaths", "diff_deaths", "perc_deaths", "n_non_deaths"))
+
+last_date <- tail(df.plot,1)$date
+
+df.plot <- df.raw %>%
+  replace_na(replace = list(n_deaths = 0)) %>%
+  mutate(date = as.Date(date)) %>%
+  select(date, n_deaths)
+
+p.deaths <- df.plot %>%
+  ggplot(aes(x = date, y = n_deaths)) +
+  geom_line(color = "orange", size = 1.2) +
+  theme_bw() +
+  labs(
+    title = "Anzahl Todesfälle (kumuliert)",
+    subtitle = paste0("Datum: ", last_date),
+    caption = "Daten von https://www.rki.de/DE/Content/InfAZ/N/Neuartiges_Coronavirus/Daten/Fallzahlen_Gesamtuebersicht.html"
+  ) +
+  xlab("") +
+  ylab("") +
+  scale_y_continuous(labels = scales::label_number(), breaks = seq(0,1e6,25000)) +
+  scale_x_date(date_breaks = "2 months", date_labels = "%m/%Y")
+
+ggsave(p.deaths, filename = paste0(last_date, "_kumulierte_Todesfälle.png"), width = 10)
 
