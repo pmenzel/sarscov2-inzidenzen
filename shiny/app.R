@@ -74,7 +74,7 @@ server <- function(input, output, session) {
       curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
     }
 
-    df.raw.BL <- read_xlsx(filename, sheet = 5, skip = 1)
+    df.raw.BL <- read_xlsx(filename, sheet = 4, skip = 1)
 
     df.long <- df.raw.BL %>%
       pivot_longer(-MeldeLandkreisBundesland, names_to = "Datum", values_to = "Inzidenz") %>%
@@ -152,7 +152,7 @@ server <- function(input, output, session) {
       curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
     }
 
-    df.raw.LK <- read_xlsx(filename, sheet = 7, skip = 1)
+    df.raw.LK <- read_xlsx(filename, sheet = 6, skip = 1)
 
     df.long <- df.raw.LK %>%
       filter(!is.na(MeldeLandkreis)) %>%
