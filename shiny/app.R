@@ -247,7 +247,8 @@ server <- function(input, output, session) {
 
   output$plotDeaths <- renderPlot({
     df.plot <- df.plot.deaths()
-
+    last_date <- tail(df.plot,1)$date
+    
     p.deaths <- df.plot %>%
       ggplot(aes(x = date, y = n_deaths)) +
       geom_line(color = "orange", size = 1.2) +
