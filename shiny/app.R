@@ -15,6 +15,7 @@ library(shiny)
 library(shinydashboard)
 library(shinycssloaders)
 library(readxl)
+library(patchwork)
 
 # global vars ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -74,7 +75,7 @@ server <- function(input, output, session) {
       curl_download(url = urlRKI, destfile = filename, quiet = FALSE, mode = "wb")
     }
 
-    df.raw.BL <- read_xlsx(filename, sheet = 4, skip = 1)
+    df.raw.BL <- read_xlsx(filename, sheet = 5, skip = 1)
 
     df.long <- df.raw.BL %>%
       pivot_longer(-MeldeLandkreisBundesland, names_to = "Datum", values_to = "Inzidenz") %>%
@@ -247,7 +248,7 @@ server <- function(input, output, session) {
   output$plotDeaths <- renderPlot({
     df.plot <- df.plot.deaths()
 
-    df.plot %>%
+    p.deaths <- df.plot %>%
       ggplot(aes(x = date, y = n_deaths)) +
       geom_line(color = "orange", size = 1.2) +
       theme_bw(base_size = 15) +
@@ -260,6 +261,18 @@ server <- function(input, output, session) {
       ylab("") +
       scale_y_continuous(labels = scales::label_number(), breaks = seq(0,1e6,25000)) +
       scale_x_date(date_breaks = "2 months", date_labels = "%m/%Y")
+
+    p.deaths_lastmonth <- df.plot %>%
+      filter(date >= last_date - months(1)) %>%
+      ggplot(aes(x = date, y = n_deaths)) +
+      geom_line(color = "orange", size = 1.2) +
+      theme_bw() +
+      xlab("") +
+      ylab("") +
+      scale_y_continuous(labels = scales::label_number(), breaks = seq(2000,1e6,2000)) +
+      scale_x_date(date_breaks = "7 days", date_labels = "%d.%m")
+
+    p.deaths + inset_element(p.deaths_lastmonth, 0.01, 0.6, 0.4, 0.99)
   })
 
 }

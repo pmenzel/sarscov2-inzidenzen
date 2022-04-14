@@ -17,6 +17,7 @@ library(plotly)
 library(lubridate)
 library(curl)
 library(readxl)
+library(patchwork)
 
 df.ID_BL <- data.frame(BL_ID = c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16"),
                        Bundesland = c("Schleswig-Holstein", "Hamburg", "Niedersachsen", "Bremen", "Nordrhein-Westfalen", "Hessen", "Rheinland-Pfalz", "Baden-Württemberg", "Bayern", "Saarland", "Berlin", "Brandenburg", "Mecklenburg-Vorpommern", "Sachsen", "Sachsen-Anhalt", "Thüringen")
@@ -31,7 +32,7 @@ DateOfInterest <- today() - days(1)
 
 # Bundesländer ----------------------------------------------------------------------------------------------------------------------------------------------
 
-df.raw.BL <- read_xlsx(filename, sheet = 4, skip = 1)
+df.raw.BL <- read_xlsx(filename, sheet = 5, skip = 1)
 
 df.long <- df.raw.BL %>%
   pivot_longer(-MeldeLandkreisBundesland, names_to = "Datum", values_to = "Inzidenz") %>%
@@ -187,5 +188,17 @@ p.deaths <- df.plot %>%
   scale_y_continuous(labels = scales::label_number(), breaks = seq(0,1e6,25000)) +
   scale_x_date(date_breaks = "2 months", date_labels = "%m/%Y")
 
-ggsave(p.deaths, filename = paste0(last_date, "_kumulierte_Todesfälle.png"), width = 10)
+p.deaths_lastmonth <- df.plot %>%
+  filter(date >= last_date - months(1)) %>%
+  ggplot(aes(x = date, y = n_deaths)) +
+  geom_line(color = "orange", size = 1.2) +
+  theme_bw() +
+  xlab("") +
+  ylab("") +
+  scale_y_continuous(labels = scales::label_number(), breaks = seq(2000,1e6,2000)) +
+  scale_x_date(date_breaks = "7 days", date_labels = "%d.%m")
+
+p.combined <- p.deaths + inset_element(p.deaths_lastmonth, 0.01, 0.6, 0.4, 0.99)
+
+ggsave(p.combined, filename = paste0(last_date, "_kumulierte_Todesfälle.png"), width = 10)
 

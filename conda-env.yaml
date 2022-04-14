@@ -15,3 +15,4 @@ dependencies:
   - conda-forge::r-shiny
   - conda-forge::r-shinycssloaders
   - conda-forge::r-shinydashboard
+  - conda-forge::r-patchwork
